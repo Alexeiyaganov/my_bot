@@ -115,21 +115,33 @@ class ButtonConstructor:
 
     def make_sportsmen_list(self, event_id: int, phone: str, items, checked: list):
         markup = types.InlineKeyboardMarkup()
+        print("got_list")
+        print(items)
+        print(checked)
         for value in items:
             if value is not []:
+                flag = 0
                 id = value[0]
+                year = value[4]
                 string = ""
                 for i in value[2:]:
                     string += str(i) + " "
-                if id in checked:
-                    call_data1 = json.dumps({"sportsman_edit": [phone, checked, id, 0]}, ensure_ascii=False)
-                    call_data2 = json.dumps({"sportsman": [phone, checked, id, 0]}, ensure_ascii=False)
-                    btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
-                    btn2 = types.InlineKeyboardButton(text="✅", callback_data=call_data2)
-                    markup.row(btn1, btn2)
-                else:
+                for item in checked:
+                    if id == item[0]:
+                        call_data1 = json.dumps({"sportsman_edit": [phone, checked, id, 0]}, ensure_ascii=False)
+                        call_data2 = json.dumps({"sportsman": [phone, checked, id, 0, year]}, ensure_ascii=False)
+                        print("1111111")
+                        btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
+                        btn2 = types.InlineKeyboardButton(text="✅", callback_data=call_data2)
+                        markup.row(btn1, btn2)
+                        flag = 1
+                        break
+                    else:
+                        continue
+                if flag == 0:
                     call_data1 =json.dumps({"sportsman_edit": [phone, checked, id, 0]}, ensure_ascii=False)
-                    call_data2 = json.dumps({"sportsman": [phone, checked, id, 1]}, ensure_ascii=False)
+                    call_data2 = json.dumps({"sportsman": [phone, checked, id, 1, year]}, ensure_ascii=False)
+                    print("222222")
                     btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
                     btn2 = types.InlineKeyboardButton(text="✔", callback_data=call_data2)
                     markup.row(btn1, btn2)
@@ -138,6 +150,7 @@ class ButtonConstructor:
         if len(checked) > 0:
             call_data = json.dumps({"check": [event_id, checked]}, ensure_ascii=False)
             markup.add(types.InlineKeyboardButton(text="Заявить", callback_data=call_data))
+        print("ok")
         return markup
 
     def make_buttons_after_checking(self, event_id):
@@ -163,27 +176,41 @@ class ButtonConstructor:
 
     def make_group_list(self, phone, items, checked):
         markup = types.InlineKeyboardMarkup()
-        for value in items:
-            if value is not []:
-                id = value[0]
-                string = value[2] + " c " + value[3] + " до " + value[4]
-                if id in checked:
-                    call_data1 = json.dumps({"group_edit": [phone, checked, id]}, ensure_ascii=False)
-                    call_data2 = json.dumps({"group": [phone, checked, id, 0]}, ensure_ascii=False)
-                    btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
-                    btn2 = types.InlineKeyboardButton(text="✅", callback_data=call_data2)
-                    markup.row(btn1, btn2)
-                else:
-                    call_data1 = json.dumps({"group_edit": [phone, checked, id]}, ensure_ascii=False)
-                    call_data2 = json.dumps({"group": [phone, checked, id, 1]}, ensure_ascii=False)
-                    btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
-                    btn2 = types.InlineKeyboardButton(text="✔", callback_data=call_data2)
-                    markup.row(btn1, btn2)
+        if items != []:
+            for value in items:
+                if value is not []:
+                    id = value[0]
+                    string = str(value[2]) + " c " + str(value[3]) + " до " + str(value[4])
+                    if id in checked:
+                        call_data1 = json.dumps({"group_edit": [phone, checked, id]}, ensure_ascii=False)
+                        call_data2 = json.dumps({"group": [phone, checked, id, 0]}, ensure_ascii=False)
+                        btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
+                        btn2 = types.InlineKeyboardButton(text="✅", callback_data=call_data2)
+                        markup.row(btn1, btn2)
+                    else:
+                        call_data1 = json.dumps({"group_edit": [phone, checked, id]}, ensure_ascii=False)
+                        call_data2 = json.dumps({"group": [phone, checked, id, 1]}, ensure_ascii=False)
+                        btn1 = types.InlineKeyboardButton(text=string, callback_data=call_data1)
+                        btn2 = types.InlineKeyboardButton(text="✔", callback_data=call_data2)
+                        markup.row(btn1, btn2)
 
         call_data = json.dumps({"add_group": [phone]}, ensure_ascii=False)
         markup.add(types.InlineKeyboardButton(text="Добавить группу", callback_data=call_data))
         if len(checked) > 0:
             call_data = json.dumps({"save_groups": [phone, checked]}, ensure_ascii=False)
             markup.add(types.InlineKeyboardButton(text="Сохранить", callback_data=call_data))
+        return markup
+
+    def make_check_group_list(self, checked, id, year, groups):
+        markup = types.InlineKeyboardMarkup()
+        buttons=[]
+        print(checked)
+        for item in groups:
+            if (item[1] <= year <= item[2]) or (item[1] == 0 and item[2] == 0):
+                call_data = json.dumps({"choose_group": [item[0], checked, id]}, ensure_ascii=False)
+                print(call_data)
+                btn = types.InlineKeyboardButton(text=item[0], callback_data=call_data)
+                buttons.append(btn)
+        markup.row(*buttons)
         return markup
 

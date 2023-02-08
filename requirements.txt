@@ -1,0 +1,4 @@
+pyTelegramBotAPI==4.9.0
+python-telegram-bot-calendar==1.0.5
+prettytable==3.6.0
+python-telegram-bot-pagination==0.0.2

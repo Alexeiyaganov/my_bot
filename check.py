@@ -25,6 +25,7 @@ class Check:
         markup = self.bc.make_year_list()
         self.bot.send_message(message.chat.id, 'Введите Год Рождения:                  ', reply_markup=markup)
 
+
     def question3(self, message):
         m3 = self.bot.send_message(message.chat.id, 'Введите Название Команды:')
         self.bot.register_next_step_handler(m3, self.question4)

@@ -15,17 +15,18 @@ class DBHelper:
 
     def create_event_table(self, name):
         name_tb = 'check_tb_'+str(name)
-        stmt = "CREATE TABLE IF NOT EXISTS " + name_tb +"(id integer PRIMARY KEY, org_phone text NOT NULL, last_name text NOT NULL, first_name text, year_born integer, team text, rank text, comment text)"
+        stmt = "CREATE TABLE IF NOT EXISTS " + name_tb +"(id integer PRIMARY KEY, org_phone text NOT NULL, last_name text NOT NULL, first_name text, group_name text, year_born integer, team text, rank text, comment text)"
         name_tb = (name_tb,)
         self.conn.execute(stmt)
         self.conn.commit()
 
     def add_event(self, org_phone: str, event_name: str, event_date: str, info: str, checkurl: str, check_here: str, location: str, split: str):
-        stmt = "INSERT INTO main_tb (org_phone, event_name, event_date, info, checkurl, check_here, location, split) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+        stmt = "INSERT INTO main_tb (org_phone, event_name, event_date, info, checkurl, check_here, location, split) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         args = (org_phone, event_name, event_date, info, checkurl, check_here, location, split)
-        id = self.conn.execute(stmt, args)
+        self.conn.execute(stmt, args)
         self.conn.commit()
-        return id
+        stmt1 = "SELECT last_insert_rowid()"
+        return [x[:] for x in self.conn.execute(stmt1)][0][0]
 
     # def delete_item(self, item_text):
     #     stmt = "DELETE FROM items WHERE description = (?)"
@@ -73,9 +74,11 @@ class DBHelper:
 
 
     def add_sportsmen_to_event(self, event_id, items):
-        for item in items:
-            stmt = "INSERT INTO " + "check_tb_" + str(event_id) + " (org_phone, last_name, first_name, year_born, team, rank, comment) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            args = (item[0][0], item[0][1], item[0][2], int(item[0][3]), item[0][4], item[0][5], item[0][6])
+        for i in items:
+            item = i[0]
+            group = i[1]
+            stmt = "INSERT INTO " + "check_tb_" + str(event_id) + " (org_phone, last_name, first_name, group, year_born, team, rank, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            args = (item[0][0], item[0][1], item[0][2], group, int(item[0][3]), item[0][4], item[0][5], item[0][6])
             self.conn.execute(stmt, args)
         self.conn.commit()
 
@@ -96,22 +99,32 @@ class DBHelper:
 
 
     def add_group(self, org_phone: str, group_name: str, age_from: int, age_to: int, price: int):
-        stmt = "INSERT INTO main_tb (org_phone, group_name, min_age, max_age, price) VALUES (?, ?, ?, ?, ?)"
+        stmt = "INSERT INTO groups_tb (org_phone, group_name, min_age, max_age, price) VALUES (?, ?, ?, ?, ?)"
         args = (org_phone, group_name, age_from, age_to, price)
         self.conn.execute(stmt, args)
         self.conn.commit()
 
     def get_group_by_id(self, id):
-        stmt = "SELECT * FROM group_tb WHERE id = ?"
+        stmt = "SELECT * FROM groups_tb WHERE id = ?"
         id_val = (id,)
         return [x[1:] for x in self.conn.execute(stmt, id_val)]
 
-    def add_groups_to_event(self):
-        pass
+    def add_groups_to_event(self, event_name, items):
+        for item in items:
+            stmt = "INSERT INTO " + "group_tb_" + str(event_name) + " (org_phone, group_name, min_age, max_age, price) VALUES (?, ?, ?, ?, ?)"
+            args = (item[0][0], item[0][1], int(item[0][2]), int(item[0][3]), int(item[0][4]))
+            self.conn.execute(stmt, args)
+        self.conn.commit()
 
     def create_groups_event_table(self, name):
-        name_tb = 'group_tb_'+str(name)
-        stmt = "CREATE TABLE IF NOT EXISTS " + name_tb +"(id integer PRIMARY KEY, org_phone text NOT NULL, group_name text NOT NULL, min_age integer, max_age integer, price integer)"
+        name_tb = 'group_tb_' + str(name)
+        stmt = "CREATE TABLE IF NOT EXISTS " + name_tb + "(id integer PRIMARY KEY, org_phone text NOT NULL, group_name text NOT NULL, min_age integer, max_age integer, price integer)"
+        name_tb = (name_tb,)
         self.conn.execute(stmt)
         self.conn.commit()
+
+    def get_groups_by_event_id(self, event_id):
+        name_tb = 'group_tb_' + str(event_id)
+        stmt = "SELECT group_name, min_age, max_age FROM " + name_tb
+        return [x[:] for x in self.conn.execute(stmt)]
 

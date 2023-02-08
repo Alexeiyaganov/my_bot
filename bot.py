@@ -5,7 +5,6 @@ from telebot import TeleBot
 import time
 import pathlib
 
-
 from telegram_bot_calendar import DetailedTelegramCalendar as dtc, LSTEP as lp
 from buttons_constructor import ButtonConstructor
 from myparser import MyParser
@@ -15,12 +14,11 @@ from organizer import Org
 from check import Check
 import configparser
 
-
 config_path = os.path.join(sys.path[0], 'settings.ini')
 config = configparser.ConfigParser()
 config.read(config_path)
 BOT_TOKEN = config.get('Telegram', 'BOT_TOKEN')
-DATE=None
+DATE = None
 EVENT_ID = None
 db = DBHelper()
 
@@ -28,13 +26,11 @@ bot = TeleBot(BOT_TOKEN)
 db = DBHelper()
 org = Org(bot)
 bc = ButtonConstructor()
-FLAG=None
+FLAG = None
 ch = Check(bot, db, EVENT_ID)
-PHONE=None
+PHONE = None
 ps = MyParser(bot)
 ga = GroupAdder(bot, db)
-
-
 
 
 @bot.message_handler(commands=['start'])
@@ -49,7 +45,7 @@ def start(message):
 def func(message):
     if (message.text in ["🧘 Организатор", "о"]):
         global FLAG
-        FLAG="ORG"
+        FLAG = "ORG"
         markup = bc.ask_phone()
         bot.send_message(message.chat.id,
                          text="Для размещение информации о мероприятии Вам необходимо поделиться своим номером телефона:",
@@ -76,11 +72,10 @@ def func(message):
         bot.send_message(message.chat.id, text="На такую комманду я не запрограммировал..")
 
 
-
-
 @bot.message_handler(content_types=['contact'])
 def contact(message):
     global FLAG
+    global org
     if FLAG == "ORG":
         org.LINKS.append(message.contact.phone_number)
         show_calendar(message)
@@ -93,19 +88,16 @@ def contact(message):
         ch.event_id = EVENT_ID
         res = db.get_event_sportsmen_by_phone(EVENT_ID, PHONE)
         checked = []
-        print(res)
         if len(res) > 0:
             for item in res[0]:
                 checked.append(item)
-        # print(checked)
         keyboard = bc.make_sportsmen_list(EVENT_ID, PHONE, sportsmens, checked)
         bot.send_message(message.chat.id, text="Мои спортсмены:", reply_markup=keyboard)
 
 
-
-
 @bot.callback_query_handler(func=dtc.func())
 def call(c):
+    global org
     result, key, step = dtc().process(c.data)
     if not result and key:
         bot.edit_message_text(f"Выбери {lp[step]}",
@@ -118,18 +110,15 @@ def call(c):
                               c.message.message_id)
         global DATE
         DATE = result
+        org.LINKS.append(DATE)
         org.question1(c.message, db, DATE)
 
 
-
-
-
 def show_calendar(message):
-        calendar, step = dtc().build()
-        bot.send_message(message.chat.id,
-                         f"Выбери {lp[step]}",
-                         reply_markup=calendar)
-
+    calendar, step = dtc().build()
+    bot.send_message(message.chat.id,
+                     f"Выбери {lp[step]}",
+                     reply_markup=calendar)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -138,7 +127,7 @@ def call(call):
     if type(called_data) == int:
         items = db.get_item_by_id(called_data)[0]
         keyboard = bc.make_item_list(items[2:-1], called_data)
-        bot.send_message(call.message.chat.id,text="" + items[1])
+        bot.send_message(call.message.chat.id, text="" + items[1])
         bot.send_message(call.message.chat.id, text="Актуальные опции:", reply_markup=keyboard)
         bot.send_message(call.message.chat.id, text="Дата проведения: " + items[-1])
     elif type(called_data) == dict:
@@ -158,7 +147,7 @@ def call(call):
 
             with open(file_name, 'wb+') as new_file:
                 new_file.write(info)
-                new_file.seek(0,0)
+                new_file.seek(0, 0)
                 bot.send_document(call.message.chat.id, new_file)
 
         elif list(called_data.keys())[0] == "Заявиться":
@@ -176,18 +165,27 @@ def call(call):
             ch.start(call.message)
 
         elif list(called_data.keys())[0] == "sportsman":
+            global PHONE
             phone = called_data["sportsman"][0]
             checked = called_data["sportsman"][1]
             id = called_data["sportsman"][2]
             flag = called_data["sportsman"][3]
+            year = called_data["sportsman"][4]
+            PHONE = phone
             if flag == 0:
-                checked.remove(id)
-            else:
-                checked.append(id)
-            sportsmen = db.get_sportsmens_by_phone(phone)
-            reply_markup = bc.make_sportsmen_list(EVENT_ID, phone, sportsmen, checked)
+                for i in checked:
+                    if i[0] == id:
+                        checked.remove(i)
+                sportsmen = db.get_sportsmens_by_phone(phone)
+                reply_markup = bc.make_sportsmen_list(EVENT_ID, phone, sportsmen, checked)
 
-            bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=reply_markup)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id,
+                                              reply_markup=reply_markup)
+            else:
+                groups = db.get_groups_by_event_id(EVENT_ID)
+                reply_markup = bc.make_check_group_list(checked, id, year, groups)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id,
+                                              reply_markup=reply_markup)
 
         elif list(called_data.keys())[0] == "rank":
             ch.SPORTSMAN.append(called_data["rank"])
@@ -202,9 +200,9 @@ def call(call):
             checked = called_data["check"][1]
             items = []
             for item in checked:
-                row = db.get_sportsman_by_id(item)
+                row = db.get_sportsman_by_id(item[0])
                 if len(row) != 0:
-                    items.append(row)
+                    items.append((row, items[1]))
             db.add_sportsmen_to_event(event_id, items)
             reply_markup = bc.make_buttons_after_checking(event_id)
             bot.send_message(call.message.chat.id,
@@ -230,8 +228,9 @@ def call(call):
             else:
                 checked.append(id)
             items = db.get_groups_by_phone(phone)
-            reply_markup = bc.make_group_list(items, checked)
-            bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=reply_markup)
+            reply_markup = bc.make_group_list(phone, items, checked)
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id,
+                                          reply_markup=reply_markup)
 
         elif list(called_data.keys())[0] == "add_group":
             ga.GROUP = []
@@ -240,6 +239,7 @@ def call(call):
 
 
         elif list(called_data.keys())[0] == "save_groups":
+            global org
             phone = called_data["save_groups"][0]
             checked = called_data["save_groups"][1]
             items = []
@@ -247,8 +247,23 @@ def call(call):
                 row = db.get_group_by_id(item)
                 if len(row) != 0:
                     items.append(row)
-            db.add_groups_to_event(event_id, items)
-            org.final_push(call.message, db, DATE)
+            org.final_push(call.message, db, DATE, items)
+
+        elif list(called_data.keys())[0] == "choose_group":
+            group = called_data["choose_group"][0]
+            checked = called_data["choose_group"][1]
+            id = called_data["choose_group"][2]
+            checked.append([id, group])
+            print("checkkkked")
+            print(checked)
+            sportsmen = db.get_sportsmens_by_phone(PHONE)
+            print(sportsmen)
+            reply_markup = bc.make_sportsmen_list(EVENT_ID, PHONE, sportsmen, checked)
+            print(reply_markup)
+            print("message_id_cahat", call.message.chat.id, call.message.id)
+            bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.id,
+                                          reply_markup=reply_markup)
+
 
 bot.polling()
 

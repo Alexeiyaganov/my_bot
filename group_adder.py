@@ -72,7 +72,7 @@ class GroupAdder:
         group_name = self.GROUP.pop()
         phone = self.GROUP.pop()
         self.db.add_group(org_phone=phone, group_name=group_name, age_from=age_from, age_to=age_to, price=price)
-        items = self.db.get_groups_by_phone(phone)[0]
+        items = self.db.get_groups_by_phone(phone)
         markup = self.bc.make_group_list(phone, items, self.checked)
         self.bot.send_message(message.chat.id, text="Группа добавлена!",
                               reply_markup=markup)
